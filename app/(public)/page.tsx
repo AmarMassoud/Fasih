@@ -5,9 +5,9 @@ export default function LandingPage() {
     <>
       <section className="hero">
         <h1 className="hero-title">
-          قُل بلهجتك،
+          قلها بلهجتك
           <br />
-          واسمعها بالفصحى.
+          واسمعها بالفصحى
         </h1>
         <p className="hero-sub">
           فصيح يستمع إلى كلامك بالعامية (مصرية، خليجية، شامية، عراقية، مغربية)
