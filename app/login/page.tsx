@@ -1,10 +1,16 @@
 import { redirect } from "next/navigation";
+import { AuthError } from "next-auth";
 import { auth, authEnabled, signIn } from "@/auth";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   if (!authEnabled) redirect("/");
   const session = await auth();
   if (session?.user) redirect("/");
+  const { error } = await searchParams;
 
   return (
     <div className="login-wrap">
@@ -12,33 +18,44 @@ export default async function LoginPage() {
         <h1>
           فصيح<span className="brand-dot">.</span>
         </h1>
-        <p>هذا التطبيق خاص — سجّلي الدخول بحساب Google المسموح له.</p>
+        <p>هذا التطبيق خاص — سجّلي الدخول للمتابعة.</p>
         <form
-          action={async () => {
+          action={async (formData) => {
             "use server";
-            await signIn("google", { redirectTo: "/" });
+            try {
+              await signIn("credentials", {
+                username: formData.get("username"),
+                password: formData.get("password"),
+                redirectTo: "/",
+              });
+            } catch (err) {
+              if (err instanceof AuthError) redirect("/login?error=1");
+              throw err;
+            }
           }}
         >
+          <input
+            className="login-input"
+            name="username"
+            placeholder="اسم المستخدم"
+            autoComplete="username"
+            dir="rtl"
+            required
+          />
+          <input
+            className="login-input"
+            name="password"
+            type="password"
+            placeholder="كلمة المرور"
+            autoComplete="current-password"
+            dir="rtl"
+            required
+          />
+          {error && (
+            <p className="login-error">اسم المستخدم أو كلمة المرور غير صحيحة.</p>
+          )}
           <button className="login-btn" type="submit">
-            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
-              <path
-                fill="#4285F4"
-                d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.1h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.6 2.8c2.2-2 3.8-5 3.8-8.5z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.6-2.8c-1 .7-2.4 1.2-4.3 1.2-3.3 0-6.1-2.2-7.1-5.2l-3.7 2.9C3.2 21.1 7.3 24 12 24z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M4.9 14.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3L1.2 6.8C.4 8.4 0 10.1 0 12s.4 3.6 1.2 5.2l3.7-2.9z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 4.7c1.8 0 3 .8 3.7 1.4l3.2-3.1C17 1.1 15.2 0 12 0 7.3 0 3.2 2.9 1.2 6.8l3.7 2.9c1-3 3.8-5 7.1-5z"
-              />
-            </svg>
-            الدخول بحساب Google
+            دخول
           </button>
         </form>
       </div>

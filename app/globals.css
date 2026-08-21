@@ -380,6 +380,31 @@ body {
   margin: 0.25rem 0 1.75rem;
 }
 
+.login-input {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 0.65rem 1rem;
+  margin-bottom: 0.7rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.login-input:focus {
+  border-color: var(--accent);
+}
+
+.login-error {
+  color: var(--danger);
+  font-size: 0.82rem;
+  margin: 0.1rem 0 0.7rem;
+}
+
 .login-btn {
   display: inline-flex;
   align-items: center;
