@@ -7,10 +7,10 @@ cd /d "%~dp0"
 where node >nul 2>nul
 if not errorlevel 1 goto have_node
 
-echo لم يتم العثور على Node.js — جارٍ التثبيت التلقائي، انتظري قليلاً...
+echo لم يتم العثور على Node.js. جارٍ التثبيت التلقائي، انتظري قليلاً...
 winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements
 
-rem winget doesn't refresh this window's PATH — add the default install
+rem winget doesn't refresh this window's PATH - add the default install
 rem location manually so we can continue without reopening the file.
 set "PATH=%ProgramFiles%\nodejs;%APPDATA%\npm;%PATH%"
 where node >nul 2>nul
@@ -20,7 +20,7 @@ echo جارٍ تنزيل Node.js مباشرة...
 powershell -NoProfile -Command "try{ $i=Invoke-RestMethod 'https://nodejs.org/dist/index.json'; $v=($i | Where-Object { $_.lts } | Select-Object -First 1).version; Invoke-WebRequest ('https://nodejs.org/dist/'+$v+'/node-'+$v+'-x64.msi') -OutFile \"$env:TEMP\node-setup.msi\" }catch{ exit 1 }"
 if errorlevel 1 goto node_fail
 
-echo جارٍ تثبيت Node.js — إذا ظهرت نافذة تطلب الإذن اضغطي «نعم»...
+echo جارٍ تثبيت Node.js. إذا ظهرت نافذة تطلب الإذن اضغطي «نعم»...
 msiexec /i "%TEMP%\node-setup.msi" /passive
 if errorlevel 1 goto node_fail
 
@@ -30,27 +30,27 @@ if errorlevel 1 goto node_fail
 goto have_node
 
 :node_fail
-echo تعذر التثبيت التلقائي. ستُفتح صفحة التنزيل — ثبّتي Node.js منها ثم افتحي هذا الملف من جديد.
+echo تعذر التثبيت التلقائي. ستُفتح صفحة التنزيل. ثبّتي Node.js منها ثم افتحي هذا الملف من جديد.
 start https://nodejs.org/en/download
 pause
 exit /b 1
 
 :have_node
 if not exist node_modules (
-    echo الإعداد لأول مرة — قد يستغرق دقيقة أو دقيقتين...
+    echo الإعداد لأول مرة، قد يستغرق دقيقة أو دقيقتين...
     call npm install --no-audit --no-fund
     if errorlevel 1 (
-        echo فشل الإعداد — تأكدي من اتصال الإنترنت ثم افتحي الملف مرة أخرى.
+        echo فشل الإعداد. تأكدي من اتصال الإنترنت ثم افتحي الملف مرة أخرى.
         pause
         exit /b 1
     )
 )
 
 if not exist .next\BUILD_ID (
-    echo جارٍ تجهيز التطبيق — مرة واحدة فقط...
+    echo جارٍ تجهيز التطبيق، مرة واحدة فقط...
     call npm run build
     if errorlevel 1 (
-        echo فشل التجهيز — حاولي مرة أخرى.
+        echo فشل التجهيز. حاولي مرة أخرى.
         pause
         exit /b 1
     )

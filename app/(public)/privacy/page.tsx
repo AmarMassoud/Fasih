@@ -1,4 +1,4 @@
-export const metadata = { title: "سياسة الخصوصية — فصيح" };
+export const metadata = { title: "سياسة الخصوصية - فصيح" };
 
 export default function PrivacyPage() {
   return (

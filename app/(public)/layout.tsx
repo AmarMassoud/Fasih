@@ -25,7 +25,7 @@ export default function PublicLayout({
           <Link href="/privacy">الخصوصية</Link>
           <Link href="/terms">الشروط</Link>
         </div>
-        <p>فصيح — من العامية إلى الفصحى.</p>
+        <p>فصيح: من العامية إلى الفصحى.</p>
       </footer>
     </div>
   );

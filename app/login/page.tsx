@@ -18,7 +18,7 @@ export default async function LoginPage({
         <h1>
           فصيح<span className="brand-dot">.</span>
         </h1>
-        <p>هذا التطبيق خاص — سجّلي الدخول للمتابعة.</p>
+        <p>هذا التطبيق خاص، سجّلي الدخول للمتابعة.</p>
         <form
           action={async (formData) => {
             "use server";

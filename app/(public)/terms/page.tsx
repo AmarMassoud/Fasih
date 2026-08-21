@@ -1,4 +1,4 @@
-export const metadata = { title: "شروط الاستخدام — فصيح" };
+export const metadata = { title: "شروط الاستخدام - فصيح" };
 
 export default function TermsPage() {
   return (

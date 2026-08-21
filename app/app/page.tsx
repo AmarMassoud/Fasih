@@ -43,7 +43,7 @@ function saveHistory(entries: HistoryEntry[]) {
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, 100)));
   } catch {
-    // storage full or blocked — history just won't persist
+    // storage full or blocked - history just won't persist
   }
 }
 
@@ -68,7 +68,7 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-/** Browser speech synthesis fallback — completely free, works offline on many devices. */
+/** Browser speech synthesis fallback - completely free, works offline on many devices. */
 function speakWithBrowser(text: string, onDone: () => void) {
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = "ar-SA";
@@ -180,7 +180,7 @@ export default function Home() {
   );
 
   // Voice pipeline: one request transcribes AND converts, then the result
-  // is spoken — no manual steps.
+  // is spoken - no manual steps.
   const processVoice = useCallback(
     async (blob: Blob) => {
       // A near-empty blob means the recording was stopped immediately.
@@ -204,12 +204,12 @@ export default function Home() {
           return;
         }
         if (!data.fusha) {
-          setError("لم أسمع كلاماً واضحاً — جرّب مرة أخرى قريباً من الميكروفون.");
+          setError("لم أسمع كلاماً واضحاً، جرّب مرة أخرى قريباً من الميكروفون.");
           return;
         }
         const entry: HistoryEntry = {
           id: crypto.randomUUID(),
-          dialect: data.aamiya || "—",
+          dialect: data.aamiya || "(صوت)",
           fusha: data.fusha,
           ts: Date.now(),
         };
@@ -219,7 +219,7 @@ export default function Home() {
           return next;
         });
         if (data.audio && data.audioMime) {
-          // Spoken audio came back with the same response — play instantly.
+          // Spoken audio came back with the same response - play instantly.
           const bytes = Uint8Array.from(atob(data.audio), (c) => c.charCodeAt(0));
           const url = URL.createObjectURL(new Blob([bytes], { type: data.audioMime }));
           audioCache.current.set(entry.id, url);
@@ -323,7 +323,7 @@ export default function Home() {
       stream.getTracks().forEach((t) => t.stop());
       setRecording(false);
       if (!hadSpeech) {
-        setError("لم أسمع كلاماً — جرّب مرة أخرى قريباً من الميكروفون.");
+        setError("لم أسمع كلاماً، جرّب مرة أخرى قريباً من الميكروفون.");
         return;
       }
       const blob = new Blob(chunksRef.current, { type: rec.mimeType });
@@ -380,7 +380,7 @@ export default function Home() {
       setCopiedId(entry.id);
       setTimeout(() => setCopiedId(null), 1500);
     } catch {
-      // clipboard blocked — nothing to do
+      // clipboard blocked - nothing to do
     }
   }, []);
 
@@ -474,7 +474,7 @@ export default function Home() {
           {micBusy && (
             <span className="mic-status" aria-live="polite">
               {recording
-                ? "يسجّل — توقّف عن الكلام وسيتحوّل تلقائياً"
+                ? "يسجّل، توقّف عن الكلام وسيتحوّل تلقائياً"
                 : "جارٍ التحويل..."}
             </span>
           )}
@@ -501,7 +501,7 @@ export default function Home() {
 
         {hydrated && history.length === 0 && (
           <div className="empty-state">
-            لا شيء بعد — قل شيئاً بلهجتك وسيظهر هنا بالفصحى.
+            لا شيء بعد. قل شيئاً بلهجتك وسيظهر هنا بالفصحى.
           </div>
         )}
 

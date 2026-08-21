@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "فصيح — من العامية إلى الفصحى",
+  title: "فصيح: من العامية إلى الفصحى",
   description:
     "قل شيئاً بلهجتك العامية وسيحوّله فصيح إلى اللغة العربية الفصحى، نصاً وصوتاً.",
 };

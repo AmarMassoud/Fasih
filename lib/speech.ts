@@ -12,7 +12,7 @@ export interface SynthesizedAudio {
   mime: string;
 }
 
-/** ElevenLabs Scribe — the most accurate Arabic STT of the options here. */
+/** ElevenLabs Scribe - the most accurate Arabic STT of the options here. */
 export async function scribeTranscribe(
   audio: Buffer,
   mimeType: string,
@@ -40,7 +40,7 @@ export async function scribeTranscribe(
   return text || null;
 }
 
-/** Deepgram Nova-3 — fallback STT. */
+/** Deepgram Nova-3 - fallback STT. */
 export async function deepgramTranscribe(
   audio: Buffer,
   mimeType: string,
@@ -93,7 +93,7 @@ async function elevenLabsTts(text: string): Promise<SynthesizedAudio | null> {
 
 async function geminiTts(text: string): Promise<SynthesizedAudio | null> {
   // Bare text sometimes makes the TTS model refuse with "Model tried to
-  // generate text" — an explicit read-aloud instruction keeps it in audio mode.
+  // generate text" - an explicit read-aloud instruction keeps it in audio mode.
   const res = await geminiGenerate(GEMINI_TTS_MODEL, {
     contents: [
       {

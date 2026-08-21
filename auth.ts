@@ -4,7 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 /**
  * Closed-registration credential auth. Accounts exist only in AUTH_USERS:
  * comma-separated "username:salthex.hashhex" entries (PBKDF2-SHA256,
- * 600k iterations — generate with scripts/hash-password.mjs).
+ * 600k iterations - generate with scripts/hash-password.mjs).
  *
  * Auth is active only when AUTH_USERS and AUTH_SECRET are configured;
  * without them the app runs open (local one-click launcher mode).
@@ -23,7 +23,7 @@ function hexToBytes(hex: string): Uint8Array {
   return out;
 }
 
-// Web Crypto only — works in both the Node and Edge runtimes.
+// Web Crypto only - works in both the Node and Edge runtimes.
 async function verifyPassword(stored: string, password: string): Promise<boolean> {
   const [saltHex, hashHex] = stored.split(".");
   if (!saltHex || !hashHex) return false;
@@ -72,7 +72,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = String(creds?.password ?? "");
         const stored = username ? findStoredHash(username) : null;
         const ok = stored ? await verifyPassword(stored, password) : false;
-        // Both lines land in the host's function logs — the audit trail of
+        // Both lines land in the host's function logs - the audit trail of
         // who got in and who tried.
         if (ok) {
           console.log(`auth: sign-in ${username}`);

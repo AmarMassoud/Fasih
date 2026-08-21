@@ -11,7 +11,7 @@ const gate = auth((req) => {
 export default authEnabled ? gate : () => NextResponse.next();
 
 export const config = {
-  // Only the tool itself and its APIs are gated — the landing and info
+  // Only the tool itself and its APIs are gated - the landing and info
   // pages are public.
   matcher: ["/app/:path*", "/api/voice", "/api/tts", "/api/convert"],
 };

@@ -113,7 +113,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ aamiya: "", fusha: "" });
     }
 
-    // Generate the spoken fus7a here too — the client plays it instantly
+    // Generate the spoken fus7a here too - the client plays it instantly
     // instead of making a second round trip.
     const spoken = await synthesize(fusha);
     return NextResponse.json({
