@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { GeminiKeyMissingError } from "@/lib/gemini";
 import { synthesize } from "@/lib/speech";
 
+export const maxDuration = 30;
+
 export async function POST(req: Request) {
   let text: string;
   try {

@@ -3,6 +3,10 @@ import { geminiGenerate, GeminiKeyMissingError } from "@/lib/gemini";
 import { convertToFusha } from "@/lib/convert";
 import { scribeTranscribe, deepgramTranscribe, synthesize } from "@/lib/speech";
 
+// Serverless hosts default to short function timeouts; the voice turn can
+// chain STT + conversion (with hedge) + TTS.
+export const maxDuration = 60;
+
 const VOICE_MODEL = process.env.GEMINI_STT_MODEL || "gemini-3.5-flash-lite";
 
 // Fallback when no dedicated STT is available: one Gemini call transcribes

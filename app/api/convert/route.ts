@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { GeminiKeyMissingError } from "@/lib/gemini";
 import { convertToFusha } from "@/lib/convert";
 
+export const maxDuration = 30;
+
 export async function POST(req: Request) {
   let text: string;
   let dialectHint: string | undefined;
