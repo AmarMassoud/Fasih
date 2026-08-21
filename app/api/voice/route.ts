@@ -1,7 +1,36 @@
 import { NextResponse } from "next/server";
 import { geminiGenerate, GeminiKeyMissingError } from "@/lib/gemini";
+import { convertToFusha } from "@/lib/convert";
 
 const VOICE_MODEL = process.env.GEMINI_STT_MODEL || "gemini-3.5-flash-lite";
+
+// Fast path (à la diraya): Deepgram Nova-3 for transcription (~0.4 s)
+// followed by the usual fus7a conversion. Used when a key is configured;
+// otherwise a single combined Gemini call does both.
+async function deepgramTranscribe(
+  audio: Buffer,
+  mimeType: string,
+): Promise<string | null> {
+  const res = await fetch(
+    "https://api.deepgram.com/v1/listen?model=nova-3&language=ar&smart_format=true",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
+        "Content-Type": mimeType,
+      },
+      body: new Uint8Array(audio),
+    },
+  );
+  if (!res.ok) {
+    console.error("deepgram error:", res.status, await res.text());
+    return null;
+  }
+  const data = await res.json();
+  const transcript: string =
+    data?.results?.channels?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
+  return transcript || null;
+}
 
 // One round trip: transcribe the dialect speech AND convert it to fus7a.
 const VOICE_PROMPT = `استمع إلى هذا التسجيل الصوتي لمتحدث بالعامية العربية، ثم أعد JSON فقط بهذا الشكل:
@@ -39,6 +68,21 @@ export async function POST(req: Request) {
     : VOICE_PROMPT;
 
   try {
+    if (process.env.DEEPGRAM_API_KEY) {
+      const aamiya = await deepgramTranscribe(Buffer.from(audio, "base64"), mimeType);
+      if (!aamiya) {
+        return NextResponse.json({ aamiya: "", fusha: "" });
+      }
+      const fusha = await convertToFusha(aamiya, dialectHint);
+      if (!fusha) {
+        return NextResponse.json(
+          { error: "تعذر التحويل، حاول مرة أخرى." },
+          { status: 502 },
+        );
+      }
+      return NextResponse.json({ aamiya, fusha });
+    }
+
     const res = await geminiGenerate(VOICE_MODEL, {
       contents: [
         {

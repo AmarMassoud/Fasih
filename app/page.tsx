@@ -285,9 +285,9 @@ export default function Home() {
       } else {
         silentMs += TICK;
       }
-      // Stop on: 1.6 s silence after speech, 8 s of nothing, or a 45 s cap.
+      // Stop on: 1.2 s silence after speech, 8 s of nothing, or a 45 s cap.
       if (
-        (hadSpeech && silentMs >= 1600) ||
+        (hadSpeech && silentMs >= 1200) ||
         (!hadSpeech && totalMs >= 8000) ||
         totalMs >= 45000
       ) {

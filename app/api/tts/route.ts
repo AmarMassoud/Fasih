@@ -5,6 +5,38 @@ import { pcmToWav } from "@/lib/wav";
 const TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-3.1-flash-tts-preview";
 const TTS_VOICE = process.env.GEMINI_TTS_VOICE || "Charon";
 
+// Fast path: ElevenLabs Flash v2.5 (~0.3 s model latency, Arabic support).
+// Used when a key is configured; otherwise Gemini TTS, and the client
+// falls back to the browser voice if both fail.
+const ELEVEN_MODEL = process.env.ELEVENLABS_MODEL || "eleven_flash_v2_5";
+const ELEVEN_VOICE = process.env.ELEVENLABS_VOICE_ID || "pNInz6obpgDQGcFmaJgB";
+
+async function elevenLabsTts(text: string): Promise<Response | null> {
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${ELEVEN_VOICE}?output_format=mp3_44100_128`,
+    {
+      method: "POST",
+      headers: {
+        "xi-api-key": process.env.ELEVENLABS_API_KEY!,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text,
+        model_id: ELEVEN_MODEL,
+        language_code: "ar",
+      }),
+    },
+  );
+  if (!res.ok) {
+    console.error("elevenlabs error:", res.status, await res.text());
+    return null;
+  }
+  const audio = await res.arrayBuffer();
+  return new Response(audio, {
+    headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" },
+  });
+}
+
 export async function POST(req: Request) {
   let text: string;
   try {
@@ -22,6 +54,12 @@ export async function POST(req: Request) {
   }
 
   try {
+    if (process.env.ELEVENLABS_API_KEY) {
+      const fast = await elevenLabsTts(text);
+      if (fast) return fast;
+      // fall through to Gemini TTS on ElevenLabs failure (e.g. quota out)
+    }
+
     // Bare text sometimes makes the TTS model refuse with "Model tried to
     // generate text" — an explicit read-aloud instruction keeps it in audio mode.
     const res = await geminiGenerate(TTS_MODEL, {
