@@ -11,7 +11,7 @@ const gate = auth((req) => {
 export default authEnabled ? gate : () => NextResponse.next();
 
 export const config = {
-  // Everything is protected except the auth endpoints, the login page,
-  // and static assets.
-  matcher: ["/((?!api/auth|login|_next/static|_next/image|favicon.ico).*)"],
+  // Only the tool itself and its APIs are gated — the landing and info
+  // pages are public.
+  matcher: ["/app/:path*", "/api/voice", "/api/tts", "/api/convert"],
 };

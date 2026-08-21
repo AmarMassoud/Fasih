@@ -346,6 +346,286 @@ body {
   opacity: 0.8;
 }
 
+/* ---------- public pages ---------- */
+
+.pub {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.pub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.4rem 1.25rem;
+}
+
+.pub-brand {
+  font-family: var(--font-brand);
+  font-size: 1.7rem;
+  line-height: 1.7;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.pub-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+}
+
+.pub-nav a {
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.pub-nav a:hover {
+  color: var(--fg);
+}
+
+.pub-nav .pub-cta {
+  color: var(--accent-fg);
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 0.45rem 1.2rem;
+  font-weight: 600;
+}
+
+.pub-nav .pub-cta:hover {
+  color: var(--accent-fg);
+  background: var(--accent-hover);
+}
+
+.pub-main {
+  flex: 1;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+.pub-footer {
+  border-top: 1px solid var(--border);
+  margin-top: 5rem;
+  padding: 2rem 1.25rem 2.5rem;
+  text-align: center;
+}
+
+.pub-footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.pub-footer a {
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-decoration: none;
+}
+
+.pub-footer a:hover {
+  color: var(--fg);
+}
+
+.pub-footer p {
+  color: var(--muted);
+  font-size: 0.76rem;
+  opacity: 0.8;
+}
+
+/* ---------- landing ---------- */
+
+.hero {
+  text-align: center;
+  padding: 4.5rem 0 3rem;
+}
+
+.hero-title {
+  font-size: clamp(2.1rem, 6vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+
+.hero-sub {
+  color: var(--muted);
+  font-size: 1.02rem;
+  line-height: 2;
+  max-width: 34rem;
+  margin: 1.2rem auto 2rem;
+}
+
+.hero-btn {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-radius: 999px;
+  padding: 0.8rem 2.4rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.hero-btn:hover {
+  background: var(--accent-hover);
+}
+
+.hero-example {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  max-width: 30rem;
+  margin: 3rem auto 0;
+  padding: 1.6rem 1.8rem;
+}
+
+.hero-example-aamiya {
+  color: var(--muted);
+  font-size: 1.02rem;
+}
+
+.hero-example-arrow {
+  color: var(--accent);
+  margin: 0.4rem 0;
+}
+
+.hero-example-fusha {
+  font-family: var(--font-fusha);
+  font-size: 1.55rem;
+  line-height: 2;
+}
+
+.steps {
+  text-align: center;
+  padding: 3rem 0 1rem;
+}
+
+.steps h2,
+.dialects h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 1.8rem;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.step {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem 1.2rem;
+}
+
+.step-num {
+  font-family: var(--font-fusha);
+  font-size: 1.6rem;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+
+.step h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.step p {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.9;
+}
+
+.dialects {
+  text-align: center;
+  padding: 2.5rem 0 1rem;
+}
+
+.chips {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  padding: 0.4rem 1.1rem;
+}
+
+/* ---------- legal / prose pages ---------- */
+
+.legal {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 2.5rem 0 1rem;
+}
+
+.legal h1 {
+  font-size: 1.7rem;
+  font-weight: 700;
+  margin-bottom: 1.2rem;
+}
+
+.legal h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 1.6rem 0 0.5rem;
+}
+
+.legal p,
+.legal li {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 2;
+}
+
+.legal ol,
+.legal ul {
+  padding-inline-start: 1.4rem;
+  margin: 0.4rem 0;
+}
+
+/* ---------- 404 ---------- */
+
+.nf-code {
+  font-family: var(--font-fusha);
+  font-size: 2.6rem;
+  color: var(--accent);
+  line-height: 1.4;
+}
+
+.nf-btn {
+  text-decoration: none;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .steps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pub-nav {
+    gap: 0.9rem;
+  }
+}
+
 /* ---------- login ---------- */
 
 .login-wrap {

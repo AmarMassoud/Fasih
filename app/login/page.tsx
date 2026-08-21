@@ -7,9 +7,9 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  if (!authEnabled) redirect("/");
+  if (!authEnabled) redirect("/app");
   const session = await auth();
-  if (session?.user) redirect("/");
+  if (session?.user) redirect("/app");
   const { error } = await searchParams;
 
   return (
@@ -26,7 +26,7 @@ export default async function LoginPage({
               await signIn("credentials", {
                 username: formData.get("username"),
                 password: formData.get("password"),
-                redirectTo: "/",
+                redirectTo: "/app",
               });
             } catch (err) {
               if (err instanceof AuthError) redirect("/login?error=1");
