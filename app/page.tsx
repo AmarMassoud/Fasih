@@ -218,7 +218,21 @@ export default function Home() {
           saveHistory(next);
           return next;
         });
-        void play(entry);
+        if (data.audio && data.audioMime) {
+          // Spoken audio came back with the same response — play instantly.
+          const bytes = Uint8Array.from(atob(data.audio), (c) => c.charCodeAt(0));
+          const url = URL.createObjectURL(new Blob([bytes], { type: data.audioMime }));
+          audioCache.current.set(entry.id, url);
+          audioRef.current?.pause();
+          window.speechSynthesis?.cancel();
+          const audioEl = new Audio(url);
+          audioRef.current = audioEl;
+          audioEl.onended = () => setPlayingId(null);
+          setPlayingId(entry.id);
+          void audioEl.play().catch(() => setPlayingId(null));
+        } else {
+          void play(entry);
+        }
       } catch {
         setError("تعذر الاتصال بالخادم.");
       } finally {
@@ -237,7 +251,15 @@ export default function Home() {
     setError(null);
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Explicit processing constraints noticeably improve real-world
+      // transcription: echo cancellation, noise suppression, auto gain.
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
     } catch (err) {
       const name = err instanceof DOMException ? err.name : "";
       if (name === "NotAllowedError" || name === "SecurityError") {
@@ -279,15 +301,15 @@ export default function Home() {
       }
       const rms = Math.sqrt(sum / buf.length);
       totalMs += TICK;
-      if (rms > 0.02) {
+      if (rms > 0.015) {
         hadSpeech = true;
         silentMs = 0;
       } else {
         silentMs += TICK;
       }
-      // Stop on: 1.2 s silence after speech, 8 s of nothing, or a 45 s cap.
+      // Stop on: 1 s silence after speech, 8 s of nothing, or a 45 s cap.
       if (
-        (hadSpeech && silentMs >= 1200) ||
+        (hadSpeech && silentMs >= 1000) ||
         (!hadSpeech && totalMs >= 8000) ||
         totalMs >= 45000
       ) {

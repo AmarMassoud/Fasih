@@ -1,38 +1,12 @@
 import { NextResponse } from "next/server";
 import { geminiGenerate, GeminiKeyMissingError } from "@/lib/gemini";
 import { convertToFusha } from "@/lib/convert";
+import { scribeTranscribe, deepgramTranscribe, synthesize } from "@/lib/speech";
 
 const VOICE_MODEL = process.env.GEMINI_STT_MODEL || "gemini-3.5-flash-lite";
 
-// Fast path (à la diraya): Deepgram Nova-3 for transcription (~0.4 s)
-// followed by the usual fus7a conversion. Used when a key is configured;
-// otherwise a single combined Gemini call does both.
-async function deepgramTranscribe(
-  audio: Buffer,
-  mimeType: string,
-): Promise<string | null> {
-  const res = await fetch(
-    "https://api.deepgram.com/v1/listen?model=nova-3&language=ar&smart_format=true",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
-        "Content-Type": mimeType,
-      },
-      body: new Uint8Array(audio),
-    },
-  );
-  if (!res.ok) {
-    console.error("deepgram error:", res.status, await res.text());
-    return null;
-  }
-  const data = await res.json();
-  const transcript: string =
-    data?.results?.channels?.[0]?.alternatives?.[0]?.transcript?.trim() ?? "";
-  return transcript || null;
-}
-
-// One round trip: transcribe the dialect speech AND convert it to fus7a.
+// Fallback when no dedicated STT is available: one Gemini call transcribes
+// AND converts.
 const VOICE_PROMPT = `استمع إلى هذا التسجيل الصوتي لمتحدث بالعامية العربية، ثم أعد JSON فقط بهذا الشكل:
 {"aamiya": "...", "fusha": "..."}
 
@@ -43,6 +17,46 @@ const VOICE_PROMPT = `استمع إلى هذا التسجيل الصوتي لم�
 
 const MAX_AUDIO_B64 = 8 * 1024 * 1024;
 
+async function geminiCombined(
+  audio: string,
+  mimeType: string,
+  dialectHint?: string,
+): Promise<{ aamiya: string; fusha: string } | null> {
+  const prompt = dialectHint
+    ? `${VOICE_PROMPT}\n- اللهجة المرجحة للمتحدث: ${dialectHint}`
+    : VOICE_PROMPT;
+  const res = await geminiGenerate(VOICE_MODEL, {
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: prompt }, { inlineData: { mimeType, data: audio } }],
+      },
+    ],
+    generationConfig: { temperature: 0, responseMimeType: "application/json" },
+  });
+  if (!res.ok) {
+    console.error("voice upstream error:", res.status, await res.text());
+    return null;
+  }
+  const data = await res.json();
+  const raw: string =
+    data?.candidates?.[0]?.content?.parts
+      ?.map((p: { text?: string }) => p.text ?? "")
+      .join("") ?? "";
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      aamiya: String(parsed.aamiya ?? "").trim(),
+      fusha: String(parsed.fusha ?? "").trim(),
+    };
+  } catch {
+    console.error("voice parse error:", raw.slice(0, 300));
+    return null;
+  }
+}
+
+// The whole voice turn happens in this one request: transcribe -> convert
+// -> synthesize. The client gets text and playable audio together.
 export async function POST(req: Request) {
   let audio: string;
   let mimeType: string;
@@ -63,68 +77,47 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "التسجيل طويل جداً." }, { status: 400 });
   }
 
-  const prompt = dialectHint
-    ? `${VOICE_PROMPT}\n- اللهجة المرجحة للمتحدث: ${dialectHint}`
-    : VOICE_PROMPT;
-
   try {
-    if (process.env.DEEPGRAM_API_KEY) {
-      const aamiya = await deepgramTranscribe(Buffer.from(audio, "base64"), mimeType);
-      if (!aamiya) {
-        return NextResponse.json({ aamiya: "", fusha: "" });
-      }
-      const fusha = await convertToFusha(aamiya, dialectHint);
+    const buf = Buffer.from(audio, "base64");
+
+    let aamiya = "";
+    let fusha = "";
+    const transcript =
+      (await scribeTranscribe(buf, mimeType)) ??
+      (await deepgramTranscribe(buf, mimeType));
+    if (transcript) {
+      aamiya = transcript;
+      fusha = (await convertToFusha(transcript, dialectHint)) ?? "";
       if (!fusha) {
         return NextResponse.json(
           { error: "تعذر التحويل، حاول مرة أخرى." },
           { status: 502 },
         );
       }
-      return NextResponse.json({ aamiya, fusha });
+    } else {
+      const combined = await geminiCombined(audio, mimeType, dialectHint);
+      if (!combined) {
+        return NextResponse.json(
+          { error: "تعذر التعرف على الصوت، حاول مرة أخرى." },
+          { status: 502 },
+        );
+      }
+      ({ aamiya, fusha } = combined);
     }
 
-    const res = await geminiGenerate(VOICE_MODEL, {
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }, { inlineData: { mimeType, data: audio } }],
-        },
-      ],
-      generationConfig: {
-        temperature: 0,
-        responseMimeType: "application/json",
-      },
+    if (!fusha) {
+      return NextResponse.json({ aamiya: "", fusha: "" });
+    }
+
+    // Generate the spoken fus7a here too — the client plays it instantly
+    // instead of making a second round trip.
+    const spoken = await synthesize(fusha);
+    return NextResponse.json({
+      aamiya,
+      fusha,
+      audio: spoken ? spoken.audio.toString("base64") : null,
+      audioMime: spoken?.mime ?? null,
     });
-
-    if (!res.ok) {
-      console.error("voice upstream error:", res.status, await res.text());
-      return NextResponse.json(
-        { error: "تعذر التعرف على الصوت، حاول مرة أخرى." },
-        { status: res.status === 429 ? 429 : 502 },
-      );
-    }
-
-    const data = await res.json();
-    const raw: string =
-      data?.candidates?.[0]?.content?.parts
-        ?.map((p: { text?: string }) => p.text ?? "")
-        .join("") ?? "";
-
-    let aamiya = "";
-    let fusha = "";
-    try {
-      const parsed = JSON.parse(raw);
-      aamiya = String(parsed.aamiya ?? "").trim();
-      fusha = String(parsed.fusha ?? "").trim();
-    } catch {
-      console.error("voice parse error:", raw.slice(0, 300));
-      return NextResponse.json(
-        { error: "تعذر التعرف على الصوت، حاول مرة أخرى." },
-        { status: 502 },
-      );
-    }
-
-    return NextResponse.json({ aamiya, fusha });
   } catch (err) {
     if (err instanceof GeminiKeyMissingError) {
       return NextResponse.json({ error: err.message, needsKey: true }, { status: 503 });
