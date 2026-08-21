@@ -42,15 +42,16 @@ export async function POST(req: Request) {
     });
 
     if (!res.ok) {
-      const detail = await res.text();
+      // Upstream error details stay in the server log — the client only
+      // gets a generic, user-facing message.
+      console.error("convert upstream error:", res.status, await res.text());
       const status = res.status === 429 ? 429 : 502;
       return NextResponse.json(
         {
           error:
             res.status === 429
-              ? "تم تجاوز الحد المجاني مؤقتاً، حاول بعد قليل."
-              : "فشل الاتصال بالنموذج.",
-          detail: detail.slice(0, 500),
+              ? "الخدمة مشغولة مؤقتاً، حاول بعد قليل."
+              : "تعذر التحويل، حاول مرة أخرى.",
         },
         { status },
       );
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
       .trim();
 
     if (!fusha) {
-      return NextResponse.json({ error: "النموذج لم يرجع نصاً." }, { status: 502 });
+      return NextResponse.json({ error: "تعذر التحويل، حاول مرة أخرى." }, { status: 502 });
     }
 
     return NextResponse.json({ fusha });

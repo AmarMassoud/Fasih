@@ -5,29 +5,38 @@
 }
 
 :root {
-  --bg: #ffffff;
-  --fg: #111113;
-  --muted: #6b6b70;
-  --border: #e4e4e7;
-  --card: #fafafa;
-  --card-hover: #f4f4f5;
-  --accent: #111113;
+  --bg: #fafaf7;
+  --card: #ffffff;
+  --fg: #171a21;
+  --muted: #6e7480;
+  --border: #e5e3dc;
+  --border-strong: #d4d1c8;
+  --accent: #2f5fa3;
+  --accent-hover: #274f88;
+  --accent-soft: rgba(47, 95, 163, 0.08);
   --accent-fg: #ffffff;
   --danger: #b3261e;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --rec: #c22f2f;
+  --shadow: 0 1px 2px rgba(23, 26, 33, 0.04), 0 4px 16px rgba(23, 26, 33, 0.05);
+  --font-ui: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+  --font-fusha: "Amiri", "Noto Naskh Arabic", serif;
+  --font-brand: "Aref Ruqaa", serif;
 }
 
 html[data-theme="dark"] {
-  --bg: #0c0c0d;
-  --fg: #f4f4f5;
-  --muted: #9d9da3;
-  --border: #26262a;
-  --card: #151517;
-  --card-hover: #1c1c1f;
-  --accent: #f4f4f5;
-  --accent-fg: #0c0c0d;
+  --bg: #0f1217;
+  --card: #161b22;
+  --fg: #e8eaee;
+  --muted: #97a0ac;
+  --border: #262c35;
+  --border-strong: #333b47;
+  --accent: #7aa7e8;
+  --accent-hover: #94b9ee;
+  --accent-soft: rgba(122, 167, 232, 0.1);
+  --accent-fg: #0f1217;
   --danger: #f2b8b5;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --rec: #e06767;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 html {
@@ -41,14 +50,14 @@ html[data-theme="dark"] {
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+  font-family: var(--font-ui);
   line-height: 1.7;
   min-height: 100dvh;
   transition: background 0.25s ease, color 0.25s ease;
 }
 
 .container {
-  max-width: 760px;
+  max-width: 680px;
   margin: 0 auto;
   padding: 0 1.25rem 5rem;
 }
@@ -57,43 +66,58 @@ body {
 
 .header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: 1.5rem 0 2.5rem;
+  padding: 3.5rem 0 2.25rem;
 }
 
+/* Aref Ruqaa has very deep descenders (the ح tail) — the loose line-height
+   and bottom padding keep it clear of the tagline below. */
 .brand h1 {
-  font-size: 1.6rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-family: var(--font-brand);
+  font-size: 2.6rem;
+  font-weight: 400;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+}
+
+.brand-dot {
+  color: var(--accent);
 }
 
 .brand p {
-  font-size: 0.85rem;
   color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  margin-top: 0.5rem;
 }
+
+/* ---------- buttons ---------- */
 
 .icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 999px;
+  width: 2.4rem;
+  height: 2.4rem;
   border: 1px solid var(--border);
+  border-radius: 999px;
   background: var(--card);
-  color: var(--fg);
+  color: var(--muted);
+  font-size: 0.95rem;
   cursor: pointer;
-  font-size: 1.05rem;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
 .icon-btn:hover {
-  background: var(--card-hover);
+  color: var(--fg);
+  border-color: var(--border-strong);
 }
 
-.icon-btn:active {
-  transform: scale(0.94);
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* ---------- composer ---------- */
@@ -101,69 +125,87 @@ body {
 .composer {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 1.25rem;
-  padding: 1.25rem;
+  border-radius: 18px;
   box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.composer:focus-within {
+  border-color: var(--accent);
 }
 
 .composer textarea {
+  display: block;
   width: 100%;
-  min-height: 6.5rem;
-  resize: vertical;
+  min-height: 7.5rem;
+  padding: 1.25rem 1.4rem 0.75rem;
   border: none;
   outline: none;
+  resize: vertical;
   background: transparent;
   color: var(--fg);
-  font: inherit;
-  font-size: 1.1rem;
+  font-family: inherit;
+  font-size: 1.08rem;
+  line-height: 1.9;
 }
 
 .composer textarea::placeholder {
   color: var(--muted);
+  opacity: 0.75;
 }
 
 .composer-bar {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  margin-top: 0.9rem;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  border-top: 1px solid var(--border);
   flex-wrap: wrap;
-}
-
-.dialect-select {
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--fg);
-  border-radius: 999px;
-  padding: 0.45rem 0.9rem;
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
 }
 
 .spacer {
   flex: 1;
 }
 
-.mic-btn {
-  position: relative;
+.dialect-select {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
 
-.mic-btn.listening {
-  background: var(--accent);
-  color: var(--accent-fg);
-  border-color: var(--accent);
-  animation: pulse 1.4s ease-in-out infinite;
+.dialect-select:hover {
+  color: var(--fg);
+  border-color: var(--border-strong);
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent);
+.mic-btn.recording {
+  color: var(--rec);
+  border-color: var(--rec);
+  animation: rec-pulse 1.6s ease-out infinite;
+}
+
+@keyframes rec-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--rec) 35%, transparent);
   }
-  50% {
+  70% {
     box-shadow: 0 0 0 9px transparent;
   }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.mic-status {
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
 .convert-btn {
@@ -171,41 +213,27 @@ body {
   border-radius: 999px;
   background: var(--accent);
   color: var(--accent-fg);
-  font: inherit;
+  font-family: inherit;
+  font-size: 0.88rem;
   font-weight: 600;
-  font-size: 0.95rem;
-  padding: 0.55rem 1.5rem;
+  padding: 0.55rem 1.35rem;
   cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.1s ease;
+  transition: background 0.15s ease, opacity 0.15s ease;
 }
 
-.convert-btn:hover {
-  opacity: 0.88;
-}
-
-.convert-btn:active {
-  transform: scale(0.97);
+.convert-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
 }
 
 .convert-btn:disabled {
   opacity: 0.45;
-  cursor: not-allowed;
+  cursor: default;
 }
 
 .error-line {
-  margin-top: 0.8rem;
-  font-size: 0.85rem;
   color: var(--danger);
-}
-
-.hint-line {
-  margin-top: 0.8rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.hint-line a {
-  color: inherit;
+  font-size: 0.84rem;
+  padding: 0 1.4rem 1rem;
 }
 
 /* ---------- history ---------- */
@@ -214,121 +242,141 @@ body {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin: 2.5rem 0 1rem;
+  margin: 3rem 0 1rem;
 }
 
 .history-head h2 {
-  font-size: 1.05rem;
+  font-size: 0.85rem;
   font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.06em;
 }
 
 .clear-btn {
   border: none;
   background: none;
   color: var(--muted);
-  font: inherit;
-  font-size: 0.8rem;
+  font-family: inherit;
+  font-size: 0.78rem;
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  transition: color 0.15s ease;
 }
 
 .clear-btn:hover {
-  color: var(--fg);
+  color: var(--danger);
 }
 
 .empty-state {
-  text-align: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: 14px;
   color: var(--muted);
   font-size: 0.9rem;
-  padding: 2.5rem 0;
-  border: 1px dashed var(--border);
-  border-radius: 1.25rem;
+  text-align: center;
+  padding: 2.5rem 1.5rem;
 }
 
 .entry {
-  border: 1px solid var(--border);
-  border-radius: 1.25rem;
-  overflow: hidden;
-  margin-bottom: 1rem;
   background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.1rem 1.3rem 0.9rem;
+  margin-bottom: 0.8rem;
   box-shadow: var(--shadow);
 }
 
 .entry-dialect {
-  padding: 0.9rem 1.25rem;
   color: var(--muted);
-  font-size: 0.95rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.entry-dialect span {
-  display: block;
-  font-size: 0.7rem;
-  letter-spacing: 0.02em;
-  margin-bottom: 0.15rem;
+  font-size: 0.84rem;
+  line-height: 1.8;
 }
 
 .entry-fusha {
-  padding: 1rem 1.25rem 0.6rem;
-  font-size: 1.15rem;
-  font-weight: 500;
+  font-family: var(--font-fusha);
+  font-size: 1.45rem;
+  line-height: 2.1;
+  margin: 0.5rem 0 0.65rem;
+  padding-inline-start: 0.9rem;
+  border-inline-start: 2px solid var(--accent);
 }
 
 .entry-actions {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0 0.9rem 0.7rem;
+  gap: 0.35rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
 }
 
-.entry-actions .action {
+.action {
   border: none;
   background: none;
   color: var(--muted);
-  font: inherit;
+  font-family: inherit;
   font-size: 0.8rem;
-  padding: 0.3rem 0.55rem;
-  border-radius: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 8px;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
-.entry-actions .action:hover {
-  background: var(--card-hover);
-  color: var(--fg);
+.action:hover:not(:disabled) {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
-.entry-actions .action:disabled {
-  opacity: 0.5;
-  cursor: wait;
+.action:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .entry-time {
   margin-inline-start: auto;
-  font-size: 0.7rem;
   color: var(--muted);
+  font-size: 0.72rem;
+  opacity: 0.8;
 }
 
 /* ---------- footer ---------- */
 
 .footer {
-  margin-top: 3rem;
-  text-align: center;
-  font-size: 0.75rem;
+  margin-top: 4rem;
   color: var(--muted);
+  font-size: 0.76rem;
+  text-align: center;
+  opacity: 0.8;
+}
+
+/* ---------- a11y & responsive ---------- */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (max-width: 480px) {
   .header {
-    padding-top: 1rem;
+    padding-top: 2.25rem;
   }
+
   .brand h1 {
-    font-size: 1.35rem;
+    font-size: 2.1rem;
   }
+
   .entry-fusha {
-    font-size: 1.05rem;
+    font-size: 1.25rem;
+  }
+
+  .mic-status {
+    display: none;
   }
 }

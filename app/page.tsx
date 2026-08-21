@@ -12,13 +12,20 @@ interface HistoryEntry {
 const HISTORY_KEY = "fasih-history";
 const THEME_KEY = "fasih-theme";
 
-const DIALECTS: { value: string; label: string; sttLang: string }[] = [
-  { value: "", label: "اللهجة: تلقائي", sttLang: "ar-SA" },
-  { value: "مصرية", label: "مصرية", sttLang: "ar-EG" },
-  { value: "خليجية", label: "خليجية", sttLang: "ar-SA" },
-  { value: "شامية", label: "شامية", sttLang: "ar-JO" },
-  { value: "عراقية", label: "عراقية", sttLang: "ar-IQ" },
-  { value: "مغربية", label: "مغربية", sttLang: "ar-MA" },
+const DIALECTS: { value: string; label: string }[] = [
+  { value: "", label: "اللهجة: تلقائي" },
+  { value: "مصرية", label: "مصرية" },
+  { value: "خليجية", label: "خليجية" },
+  { value: "شامية", label: "شامية" },
+  { value: "عراقية", label: "عراقية" },
+  { value: "مغربية", label: "مغربية" },
+];
+
+const RECORDING_MIME_CANDIDATES = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/mp4",
+  "audio/ogg;codecs=opus",
 ];
 
 function loadHistory(): HistoryEntry[] {
@@ -49,6 +56,18 @@ function formatTime(ts: number): string {
   });
 }
 
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      resolve(dataUrl.slice(dataUrl.indexOf(",") + 1));
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
 /** Browser speech synthesis fallback — completely free, works offline on many devices. */
 function speakWithBrowser(text: string, onDone: () => void) {
   const utter = new SpeechSynthesisUtterance(text);
@@ -69,32 +88,33 @@ export default function Home() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [converting, setConverting] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [sttSupported, setSttSupported] = useState(true);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [micSupported, setMicSupported] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [needsKey, setNeedsKey] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [loadingAudioId, setLoadingAudioId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const baseTextRef = useRef("");
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCache = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     setHistory(loadHistory());
     setHydrated(true);
-    setSttSupported(
+    setMicSupported(
       typeof window !== "undefined" &&
-        Boolean(window.SpeechRecognition || window.webkitSpeechRecognition),
+        Boolean(navigator.mediaDevices?.getUserMedia) &&
+        "MediaRecorder" in window,
     );
     // Chrome loads voices asynchronously; touching getVoices() warms the list
     // so the fallback narrator can find an Arabic voice later.
     window.speechSynthesis?.getVoices();
     const cache = audioCache.current;
     return () => {
-      recognitionRef.current?.abort();
+      recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
       cache.forEach((url) => URL.revokeObjectURL(url));
     };
   }, []);
@@ -110,58 +130,90 @@ export default function Home() {
     }
   };
 
-  const stopListening = useCallback(() => {
-    recognitionRef.current?.stop();
-    setListening(false);
+  const transcribe = useCallback(
+    async (blob: Blob) => {
+      // A near-empty blob means the recording was stopped immediately.
+      if (blob.size < 1024) return;
+      setTranscribing(true);
+      setError(null);
+      try {
+        const audio = await blobToBase64(blob);
+        const res = await fetch("/api/stt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            audio,
+            mimeType: blob.type.split(";")[0] || "audio/webm",
+            dialect: dialect || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || "تعذر التعرف على الصوت، حاول مرة أخرى.");
+          return;
+        }
+        if (data.text) {
+          setText((prev) => (prev.trim() ? prev.trim() + " " + data.text : data.text));
+        } else {
+          setError("لم أسمع كلاماً واضحاً — جرّب مرة أخرى قريباً من الميكروفون.");
+        }
+      } catch {
+        setError("تعذر الاتصال بالخادم.");
+      } finally {
+        setTranscribing(false);
+      }
+    },
+    [dialect],
+  );
+
+  const stopRecording = useCallback(() => {
+    recorderRef.current?.stop();
+    setRecording(false);
   }, []);
 
-  const startListening = useCallback(() => {
-    const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!Ctor) {
-      setSttSupported(false);
+  const startRecording = useCallback(async () => {
+    setError(null);
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      const name = err instanceof DOMException ? err.name : "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        setError("لم يُسمح باستخدام الميكروفون. فعّل الإذن من إعدادات المتصفح.");
+      } else if (name === "NotFoundError") {
+        setError("لم يُعثر على ميكروفون في هذا الجهاز.");
+      } else {
+        setError("تعذر تشغيل الميكروفون، حاول مرة أخرى.");
+      }
       return;
     }
-    setError(null);
-    const rec = new Ctor();
-    const selected = DIALECTS.find((d) => d.value === dialect) ?? DIALECTS[0];
-    rec.lang = selected.sttLang;
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.maxAlternatives = 1;
-    baseTextRef.current = text ? text.trim() + " " : "";
 
-    rec.onresult = (e) => {
-      let finalText = "";
-      let interim = "";
-      for (let i = 0; i < e.results.length; i++) {
-        const r = e.results[i];
-        if (r.isFinal) finalText += r[0].transcript + " ";
-        else interim += r[0].transcript;
-      }
-      setText((baseTextRef.current + finalText + interim).trimStart());
+    const mimeType = RECORDING_MIME_CANDIDATES.find((m) =>
+      MediaRecorder.isTypeSupported(m),
+    );
+    const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    chunksRef.current = [];
+    rec.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
     };
-    rec.onerror = (e) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        setError("لم يُسمح باستخدام الميكروفون. فعّل الإذن من إعدادات المتصفح.");
-      } else if (e.error !== "no-speech" && e.error !== "aborted") {
-        setError("تعذر التعرف على الصوت، حاول مرة أخرى.");
-      }
+    rec.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(chunksRef.current, { type: rec.mimeType });
+      void transcribe(blob);
     };
-    rec.onend = () => setListening(false);
 
-    recognitionRef.current = rec;
+    recorderRef.current = rec;
     rec.start();
-    setListening(true);
-  }, [dialect, text]);
+    setRecording(true);
+  }, [transcribe]);
 
   const convert = useCallback(async () => {
     const input = text.trim();
     if (!input || converting) return;
-    if (listening) stopListening();
+    if (recording) stopRecording();
 
     setConverting(true);
     setError(null);
-    setNeedsKey(false);
     try {
       const res = await fetch("/api/convert", {
         method: "POST",
@@ -170,7 +222,6 @@ export default function Home() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setNeedsKey(Boolean(data.needsKey));
         setError(data.error || "حدث خطأ غير متوقع.");
         return;
       }
@@ -191,7 +242,7 @@ export default function Home() {
     } finally {
       setConverting(false);
     }
-  }, [text, dialect, converting, listening, stopListening]);
+  }, [text, dialect, converting, recording, stopRecording]);
 
   const play = useCallback(
     async (entry: HistoryEntry) => {
@@ -259,11 +310,15 @@ export default function Home() {
     audioCache.current.clear();
   };
 
+  const micBusy = recording || transcribing;
+
   return (
     <div className="container">
       <header className="header">
         <div className="brand">
-          <h1>فصيح</h1>
+          <h1>
+            فصيح<span className="brand-dot">.</span>
+          </h1>
           <p>من العامية إلى الفصحى</p>
         </div>
         <button
@@ -272,7 +327,14 @@ export default function Home() {
           aria-label="تبديل المظهر"
           title="تبديل المظهر"
         >
-          ◐
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path
+              d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.5 5.5 0 0 1-7.54-7.54C12.92 3.04 12.46 3 12 3Z"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
       </header>
 
@@ -302,55 +364,51 @@ export default function Home() {
               </option>
             ))}
           </select>
-          {sttSupported && (
+          {micSupported && (
             <button
-              className={`icon-btn mic-btn${listening ? " listening" : ""}`}
-              onClick={listening ? stopListening : startListening}
-              aria-label={listening ? "إيقاف الاستماع" : "تحدث بالميكروفون"}
-              title={listening ? "إيقاف الاستماع" : "تحدث بالميكروفون"}
+              className={`icon-btn mic-btn${recording ? " recording" : ""}`}
+              onClick={recording ? stopRecording : startRecording}
+              disabled={transcribing}
+              aria-label={recording ? "إيقاف التسجيل" : "تحدث بالميكروفون"}
+              title={recording ? "إيقاف التسجيل" : "تحدث بالميكروفون"}
             >
-              {listening ? "◼" : "🎙"}
+              {recording ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden>
+                  <rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor" />
+                </svg>
+              ) : (
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.7" />
+                  <path
+                    d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
             </button>
           )}
           <div className="spacer" />
+          {micBusy && (
+            <span className="mic-status" aria-live="polite">
+              {recording ? "يسجّل الآن — اضغط ◼ للإيقاف" : "جارٍ تفريغ الصوت..."}
+            </span>
+          )}
           <button
             className="convert-btn"
             onClick={convert}
-            disabled={!text.trim() || converting}
+            disabled={!text.trim() || converting || transcribing}
           >
             {converting ? "جارٍ التحويل..." : "حوّل إلى الفصحى"}
           </button>
         </div>
-        {error && (
-          <p className="error-line">
-            {error}
-            {needsKey && (
-              <>
-                {" "}
-                — أنشئ مفتاحاً مجانياً من{" "}
-                <a
-                  href="https://aistudio.google.com/apikey"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Google AI Studio
-                </a>{" "}
-                وضعه في <code>.env.local</code>
-              </>
-            )}
-          </p>
-        )}
-        {!sttSupported && (
-          <p className="hint-line">
-            متصفحك لا يدعم الإدخال الصوتي — استخدم Chrome أو Edge، أو اكتب النص
-            مباشرة.
-          </p>
-        )}
+        {error && <p className="error-line">{error}</p>}
       </section>
 
       <section>
         <div className="history-head">
-          <h2>المحادثات السابقة</h2>
+          <h2>السجلّ</h2>
           {history.length > 0 && (
             <button className="clear-btn" onClick={clearHistory}>
               مسح السجل
@@ -360,16 +418,13 @@ export default function Home() {
 
         {hydrated && history.length === 0 && (
           <div className="empty-state">
-            لا توجد محادثات بعد — قل شيئاً بلهجتك وسيظهر التحويل هنا.
+            لا شيء بعد — قل شيئاً بلهجتك وسيظهر هنا بالفصحى.
           </div>
         )}
 
         {history.map((entry) => (
           <article className="entry" key={entry.id}>
-            <div className="entry-dialect">
-              <span>بالعامية</span>
-              {entry.dialect}
-            </div>
+            <div className="entry-dialect">{entry.dialect}</div>
             <div className="entry-fusha">{entry.fusha}</div>
             <div className="entry-actions">
               <button
@@ -381,10 +436,10 @@ export default function Home() {
                   ? "جارٍ التحميل..."
                   : playingId === entry.id
                     ? "◼ إيقاف"
-                    : "▶ استمع"}
+                    : "استمع"}
               </button>
               <button className="action" onClick={() => copy(entry)}>
-                {copiedId === entry.id ? "✓ نُسخ" : "⧉ نسخ"}
+                {copiedId === entry.id ? "✓ نُسخ" : "نسخ"}
               </button>
               <span className="entry-time">{formatTime(entry.ts)}</span>
             </div>
@@ -392,9 +447,7 @@ export default function Home() {
         ))}
       </section>
 
-      <footer className="footer">
-        فصيح — يعمل بنموذج Gemini المجاني، والسجل محفوظ في متصفحك فقط.
-      </footer>
+      <footer className="footer">سجلّك يبقى في جهازك فقط.</footer>
     </div>
   );
 }

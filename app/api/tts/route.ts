@@ -35,11 +35,11 @@ export async function POST(req: Request) {
     });
 
     if (!res.ok) {
-      const detail = await res.text();
       // The client falls back to the browser's built-in speech synthesis
-      // on any non-OK response, so a plain error body is enough here.
+      // on any non-OK response; details stay in the server log.
+      console.error("tts upstream error:", res.status, await res.text());
       return NextResponse.json(
-        { error: "TTS failed", detail: detail.slice(0, 500) },
+        { error: "TTS failed" },
         { status: res.status === 429 ? 429 : 502 },
       );
     }
