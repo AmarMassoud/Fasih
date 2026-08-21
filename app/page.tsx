@@ -207,43 +207,6 @@ export default function Home() {
     setRecording(true);
   }, [transcribe]);
 
-  const convert = useCallback(async () => {
-    const input = text.trim();
-    if (!input || converting) return;
-    if (recording) stopRecording();
-
-    setConverting(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/convert", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: input, dialect: dialect || undefined }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "حدث خطأ غير متوقع.");
-        return;
-      }
-      const entry: HistoryEntry = {
-        id: crypto.randomUUID(),
-        dialect: input,
-        fusha: data.fusha,
-        ts: Date.now(),
-      };
-      setHistory((prev) => {
-        const next = [entry, ...prev];
-        saveHistory(next);
-        return next;
-      });
-      setText("");
-    } catch {
-      setError("تعذر الاتصال بالخادم.");
-    } finally {
-      setConverting(false);
-    }
-  }, [text, dialect, converting, recording, stopRecording]);
-
   const play = useCallback(
     async (entry: HistoryEntry) => {
       // Toggle off if this entry is already playing.
@@ -292,6 +255,45 @@ export default function Home() {
     },
     [playingId],
   );
+
+  const convert = useCallback(async () => {
+    const input = text.trim();
+    if (!input || converting) return;
+    if (recording) stopRecording();
+
+    setConverting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/convert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: input, dialect: dialect || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "حدث خطأ غير متوقع.");
+        return;
+      }
+      const entry: HistoryEntry = {
+        id: crypto.randomUUID(),
+        dialect: input,
+        fusha: data.fusha,
+        ts: Date.now(),
+      };
+      setHistory((prev) => {
+        const next = [entry, ...prev];
+        saveHistory(next);
+        return next;
+      });
+      setText("");
+      // Speak the fus7a version right away.
+      void play(entry);
+    } catch {
+      setError("تعذر الاتصال بالخادم.");
+    } finally {
+      setConverting(false);
+    }
+  }, [text, dialect, converting, recording, stopRecording, play]);
 
   const copy = useCallback(async (entry: HistoryEntry) => {
     try {
