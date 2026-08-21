@@ -22,8 +22,10 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Bare text sometimes makes the TTS model refuse with "Model tried to
+    // generate text" — an explicit read-aloud instruction keeps it in audio mode.
     const res = await geminiGenerate(TTS_MODEL, {
-      contents: [{ role: "user", parts: [{ text }] }],
+      contents: [{ role: "user", parts: [{ text: `Read aloud in Arabic, exactly as written: ${text}` }] }],
       generationConfig: {
         responseModalities: ["AUDIO"],
         speechConfig: {

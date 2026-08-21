@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { geminiGenerate, GeminiKeyMissingError } from "@/lib/gemini";
 
-const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || "gemini-2.5-flash-lite";
+const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || "gemini-3.5-flash-lite";
 
 const SYSTEM_PROMPT = `أنت خبير في اللغة العربية ولهجاتها. مهمتك تحويل كلام باللهجة العامية (مصرية، خليجية، شامية، مغربية، عراقية، أو غيرها) إلى اللغة العربية الفصحى.
 
