@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { geminiGenerate, GeminiKeyMissingError } from "@/lib/gemini";
 import { pcmToWav } from "@/lib/wav";
 
-const TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
+const TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-3.1-flash-tts-preview";
 const TTS_VOICE = process.env.GEMINI_TTS_VOICE || "Charon";
 
 export async function POST(req: Request) {

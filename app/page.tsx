@@ -130,83 +130,6 @@ export default function Home() {
     }
   };
 
-  const transcribe = useCallback(
-    async (blob: Blob) => {
-      // A near-empty blob means the recording was stopped immediately.
-      if (blob.size < 1024) return;
-      setTranscribing(true);
-      setError(null);
-      try {
-        const audio = await blobToBase64(blob);
-        const res = await fetch("/api/stt", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            audio,
-            mimeType: blob.type.split(";")[0] || "audio/webm",
-            dialect: dialect || undefined,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || "تعذر التعرف على الصوت، حاول مرة أخرى.");
-          return;
-        }
-        if (data.text) {
-          setText((prev) => (prev.trim() ? prev.trim() + " " + data.text : data.text));
-        } else {
-          setError("لم أسمع كلاماً واضحاً — جرّب مرة أخرى قريباً من الميكروفون.");
-        }
-      } catch {
-        setError("تعذر الاتصال بالخادم.");
-      } finally {
-        setTranscribing(false);
-      }
-    },
-    [dialect],
-  );
-
-  const stopRecording = useCallback(() => {
-    recorderRef.current?.stop();
-    setRecording(false);
-  }, []);
-
-  const startRecording = useCallback(async () => {
-    setError(null);
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (err) {
-      const name = err instanceof DOMException ? err.name : "";
-      if (name === "NotAllowedError" || name === "SecurityError") {
-        setError("لم يُسمح باستخدام الميكروفون. فعّل الإذن من إعدادات المتصفح.");
-      } else if (name === "NotFoundError") {
-        setError("لم يُعثر على ميكروفون في هذا الجهاز.");
-      } else {
-        setError("تعذر تشغيل الميكروفون، حاول مرة أخرى.");
-      }
-      return;
-    }
-
-    const mimeType = RECORDING_MIME_CANDIDATES.find((m) =>
-      MediaRecorder.isTypeSupported(m),
-    );
-    const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-    chunksRef.current = [];
-    rec.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
-    };
-    rec.onstop = () => {
-      stream.getTracks().forEach((t) => t.stop());
-      const blob = new Blob(chunksRef.current, { type: rec.mimeType });
-      void transcribe(blob);
-    };
-
-    recorderRef.current = rec;
-    rec.start();
-    setRecording(true);
-  }, [transcribe]);
-
   const play = useCallback(
     async (entry: HistoryEntry) => {
       // Toggle off if this entry is already playing.
@@ -255,6 +178,140 @@ export default function Home() {
     },
     [playingId],
   );
+
+  // Voice pipeline: one request transcribes AND converts, then the result
+  // is spoken — no manual steps.
+  const processVoice = useCallback(
+    async (blob: Blob) => {
+      // A near-empty blob means the recording was stopped immediately.
+      if (blob.size < 1024) return;
+      setTranscribing(true);
+      setError(null);
+      try {
+        const audio = await blobToBase64(blob);
+        const res = await fetch("/api/voice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            audio,
+            mimeType: blob.type.split(";")[0] || "audio/webm",
+            dialect: dialect || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || "تعذر التعرف على الصوت، حاول مرة أخرى.");
+          return;
+        }
+        if (!data.fusha) {
+          setError("لم أسمع كلاماً واضحاً — جرّب مرة أخرى قريباً من الميكروفون.");
+          return;
+        }
+        const entry: HistoryEntry = {
+          id: crypto.randomUUID(),
+          dialect: data.aamiya || "—",
+          fusha: data.fusha,
+          ts: Date.now(),
+        };
+        setHistory((prev) => {
+          const next = [entry, ...prev];
+          saveHistory(next);
+          return next;
+        });
+        void play(entry);
+      } catch {
+        setError("تعذر الاتصال بالخادم.");
+      } finally {
+        setTranscribing(false);
+      }
+    },
+    [dialect, play],
+  );
+
+  const stopRecording = useCallback(() => {
+    recorderRef.current?.stop();
+    setRecording(false);
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    setError(null);
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      const name = err instanceof DOMException ? err.name : "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        setError("لم يُسمح باستخدام الميكروفون. فعّل الإذن من إعدادات المتصفح.");
+      } else if (name === "NotFoundError") {
+        setError("لم يُعثر على ميكروفون في هذا الجهاز.");
+      } else {
+        setError("تعذر تشغيل الميكروفون، حاول مرة أخرى.");
+      }
+      return;
+    }
+
+    const mimeType = RECORDING_MIME_CANDIDATES.find((m) =>
+      MediaRecorder.isTypeSupported(m),
+    );
+    const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    chunksRef.current = [];
+    rec.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
+    };
+
+    // Voice-activity detection: once speech has been heard, ~1.6 s of
+    // silence stops the recording and the pipeline runs automatically.
+    const audioCtx = new AudioContext();
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    audioCtx.createMediaStreamSource(stream).connect(analyser);
+    const buf = new Uint8Array(analyser.fftSize);
+    let hadSpeech = false;
+    let silentMs = 0;
+    let totalMs = 0;
+    const TICK = 100;
+    const vadTimer = window.setInterval(() => {
+      analyser.getByteTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const v = (buf[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / buf.length);
+      totalMs += TICK;
+      if (rms > 0.02) {
+        hadSpeech = true;
+        silentMs = 0;
+      } else {
+        silentMs += TICK;
+      }
+      // Stop on: 1.6 s silence after speech, 8 s of nothing, or a 45 s cap.
+      if (
+        (hadSpeech && silentMs >= 1600) ||
+        (!hadSpeech && totalMs >= 8000) ||
+        totalMs >= 45000
+      ) {
+        rec.stop();
+      }
+    }, TICK);
+
+    rec.onstop = () => {
+      window.clearInterval(vadTimer);
+      void audioCtx.close();
+      stream.getTracks().forEach((t) => t.stop());
+      setRecording(false);
+      if (!hadSpeech) {
+        setError("لم أسمع كلاماً — جرّب مرة أخرى قريباً من الميكروفون.");
+        return;
+      }
+      const blob = new Blob(chunksRef.current, { type: rec.mimeType });
+      void processVoice(blob);
+    };
+
+    recorderRef.current = rec;
+    rec.start();
+    setRecording(true);
+  }, [processVoice]);
 
   const convert = useCallback(async () => {
     const input = text.trim();
@@ -394,7 +451,9 @@ export default function Home() {
           <div className="spacer" />
           {micBusy && (
             <span className="mic-status" aria-live="polite">
-              {recording ? "يسجّل الآن — اضغط ◼ للإيقاف" : "جارٍ تفريغ الصوت..."}
+              {recording
+                ? "يسجّل — توقّف عن الكلام وسيتحوّل تلقائياً"
+                : "جارٍ التحويل..."}
             </span>
           )}
           <button
