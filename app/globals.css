@@ -346,6 +346,63 @@ body {
   opacity: 0.8;
 }
 
+/* ---------- login ---------- */
+
+.login-wrap {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.login-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 2.5rem 2.25rem;
+  max-width: 22rem;
+  width: 100%;
+  text-align: center;
+}
+
+.login-card h1 {
+  font-family: var(--font-brand);
+  font-size: 2.4rem;
+  font-weight: 400;
+  line-height: 1.7;
+}
+
+.login-card p {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0.25rem 0 1.75rem;
+}
+
+.login-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  padding: 0.7rem 1.2rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.login-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 /* ---------- a11y & responsive ---------- */
 
 :focus-visible {
